@@ -1,0 +1,133 @@
+---
+title: "PROJECT 2 SOLUTIONS"
+author: "Mboya"
+date: "2/11/2020"
+setwd("C:/Users/mboya/OneDrive/Desktop/R TRAINING/PROJECT2 SOLUTIONS")
+output: html_document
+---
+
+#Q1.Import data have it in csv format
+```{r}
+library(tidyverse)
+library(haven)
+data<-read.spss("FinAccess_SPSS.sav")
+view(data)
+#writing in csv format
+write.csv(data,"financial_data.csv")
+#reading in csv format
+survey_1<-read_csv("financial_data.csv")
+view(survey_1)
+
+```
+
+#Q2.Cleaning the data
+```{r}
+sum(is.na(survey_1))
+#missing data total is 1184
+summary(survey_1)
+str(survey_1)
+na.omit(survey_1)->survey
+view(survey)
+```
+
+#3.Explanatory data analysis
+names(survey)
+#1.How financial literacy and level of income correlate
+survey%>%ggplot(aes(x=fin_literacy,y=monthly_income))+geom_col(fill="purple")
+
+People with high financial literacy tend to have high level of income as shown by the above graph
+
+```{r}
+#2.Average monthly income
+mean(survey$monthly_income)
+```
+The average monthly income is  approximately 1587.99
+
+```{r}
+#3.Number of subregions with those with highest number of respondents
+library(ggthemes)
+survey%>%count(sub_region)%>%ggplot(aes(x=sub_region,y=n))+geom_col(fill="yellow")+coord_flip()+theme_economist()
+```
+
+The data was collected across the 13 subregions and the highest number of respondents were from the regions 9 and 11
+
+```{r}
+#4.Bank and credit usage
+table(survey$bank_usage,survey$credit_usage)
+```
+
+survey%>%ggplot(aes(x=bank_usage,fill=credit_usage))+geom_bar()
+
+A larger percentage of those who are currently have a bank account take credit.However to a larger degree most of the respondents who have bank accounts also have the lowest access to credit
+
+#4.Cross table for age_coded and cluster_types
+```{r}
+library(gmodels)
+CrossTable<-CrossTable(survey$age_coded,survey$cluster_type,expected = TRUE)
+```
+
+#Q5.Test for normality,age and monthly income.Does monthly income depend on age of respondent
+```{r}
+#since sample size is greater than 5000,we cannot use sharpio test,we therefore use qqplots
+library(ggpubr)
+ggqqplot(survey$age)
+ggqqplot(survey$monthly_income)
+```
+
+#does monthly_income depend on age
+survey%>%ggplot(aes(x=age,y=monthly_income))+geom_col(fill="green")
+ All the points fall approximately along the reference lines in the first two graphs above,we can therefore assume normality for both age and income
+ 
+ In the final graph,immediately above,monthly income to alarger extent depends on age.We see that the  income increases gradually from below age 25 to its peak around 30 where the income decreases till one reaches the age 50.We can see the highest income  is at the age 55 after which ths income now decreases steadily as one continues to age
+ 
+ #Q6.Select the categorical variables on age and monthly income.Perform a Chi-Square test.State what you are testing  and your findings
+```{r}
+tble<-table(survey$age_coded,survey$incomegp)
+chisquare <- chisq.test(tble)
+chisquare
+```
+ 
+The chisquare test in this case was testing for the association between monthly income and age
+Since the p value from the test was less than 0.005,we conclude that there is enough statistical evidence to show that there is a correlation between  monthly income and age
+
+#Q7.Perform a one way ANOVA between monthly income and highest education of the respondent.Does monthly income depend on the level of education
+```{r}
+lmodel <- lm(monthly_income~education,data = survey)
+ANOVA1 <- anova(lmodel)
+ANOVA1
+```
+
+The pvalue is less than 0.005.We therefore conclude  that monthly income depends on the level of education
+
+#Q8.Test for statistical significance using one sample t test to find out if the average income is less than ksh 15000?
+```{r}
+ttest2 <- t.test(survey$monthly_income,alternative =c("less"),ml=15000,paired = FALSE,conf.level = 0.95)
+ttest2
+```
+
+The average income being less than 15,000 is not statistically significant
+
+#Q9.Generalised linear model
+```{r}
+#a)Does mobile usage depend on gender,religion,education and credit usage?
+
+model3 <- glm(survey$mobile~survey$gender_of_respondent+survey$Religion_respondent+survey$education+survey$credit_usage,family = "binomial",method = "glm.fit")
+```
+ Mobile usage does not depend on the variables above .The gender and credit usage  impact on mobile usage  negatively  while religion  of respondent and education  positively impact non mobile usage
+ 
+```{r}
+#b)Does bank usage depend financial literacy,numeracy,savings usage and credit usage?
+model4 <- glm(survey$bank_usage~survey$fin_literacy)
+model4#financial literacy affects bank usage negatively
+
+model5 <- glm(survey$bank_usage~survey$numeracy)
+model5#numeracy affects bank usage positevely
+
+model6 <- glm(survey$bank_usage~survey$savings_usage)
+model6#savings usage affects bank usage positively
+
+model7 <- glm(survey$bank_usage~survey$credit_usage)
+model7#financial literacy affects bank usage positively
+
+```
+ Bank usage depends on the variables above,Financial literacy impact on bank usage negatively while numeracy ,savings,usage  and credit usage positively impact on bank usage.Example a unit uncrease in numeracy results in a corresponding increase of 0.3745 in bank usage
